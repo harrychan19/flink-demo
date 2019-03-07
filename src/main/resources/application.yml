@@ -1,0 +1,5 @@
+server:
+  port: 9293
+spring:
+  application:
+    name: flinkdemo
