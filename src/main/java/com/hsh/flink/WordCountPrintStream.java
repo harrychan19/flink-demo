@@ -1,12 +1,5 @@
 package com.hsh.flink;
 
-import org.apache.flink.api.common.functions.FlatMapFunction;
-import org.apache.flink.api.common.functions.ReduceFunction;
-import org.apache.flink.api.java.utils.ParameterTool;
-import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.windowing.time.Time;
-
 /**
  * stream 流统计 demo主函数
  * @author hushihai
@@ -15,65 +8,41 @@ import org.apache.flink.streaming.api.windowing.time.Time;
 public class WordCountPrintStream {
 
     public static void main(String[] args) throws Exception {
-
-        // the port to connect to
-        final int port;
-        try {
-            final ParameterTool params = ParameterTool.fromArgs(args);
-            port = params.getInt("port");
-        } catch (Exception e) {
-            System.err.println("No port specified. Please run 'WordCountPrintStream --port <port>'");
-            return;
-        }
-
-        // get the execution environment
-        final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-
-        // get input data by connecting to the socket
-        DataStream<String> text = env.socketTextStream("localhost", port, "\n");
-
-        // parse the data, group it, window it, and aggregate the counts
-        DataStream<WordWithCount> windowCounts = text
-                .flatMap((FlatMapFunction<String, WordWithCount>) (value, out) -> {
-                    for (String word : value.split("\\s")) {
-                        //collect add
-                        out.collect(new WordWithCount(word, 1L));
-                    }
-                })
-                .keyBy("word")
-                .timeWindow(Time.seconds(5), Time.seconds(1))
-                .reduce((ReduceFunction<WordWithCount>) (a, b) -> new WordWithCount(a.word, a.count + b.count));
-
-        // print the results with a single thread, rather than in parallel
-        windowCounts.print().setParallelism(1);
-
-        env.execute("Socket Window WordCount");
-    }
-
-    /**
-     * @description Data type for words with count
-     * @author hushihai
-     * @date 13:52 2019/3/7
-     * @param
-     * @return
-     */
-    public static class WordWithCount {
-
-        String word;
-        long count;
-
-        public WordWithCount() {
-
-        }
-
-        WordWithCount(String word, long count) {
-            this.word = word;
-            this.count = count;
-        }
-
-        @Override
-        public String toString() {
-            return word + " : " + count;
-        }
+        /*//分析文件中的内容
+        LocalStreamEnvironment env = StreamExecutionEnvironment.createLocalEnvironment();
+        DataStreamSource<String> stringStream = env.readTextFile("D://java.txt").setParallelism(1);
+        SingleOutputStreamOperator<Tuple2<String, Integer>> dataStream = stringStream.flatMap(new Splitter())
+                .keyBy(0)
+                .sum(1);
+        DataStreamSink<Tuple2<String, Integer>> print = dataStream.print();
+        System.out.println(print.toString());
+        List<HttpHost> httpHosts = new ArrayList<>();
+        httpHosts.add(new HttpHost("47.104.158.165", 9200, "http"));
+        ElasticsearchSink.Builder<Tuple2<String, Integer>> esSinkBuilder = new ElasticsearchSink.Builder<>(
+            httpHosts,
+            new ElasticsearchSinkFunction<Tuple2<String, Integer>>() {
+                private static final long serialVersionUID = 1068840945371070962L;
+                IndexRequest createIndexRequest(Tuple2<String, Integer> element) {
+                    Map<String, String> json = new HashMap<>(0);
+                    json.put("keyword",element.f0);
+                    json.put("count", String.valueOf(element.f1));
+                    return Requests.indexRequest().index("flink").type("wordCount").source(json);
+                }
+                @Override
+                public void process(Tuple2<String, Integer> element, RuntimeContext ctx, RequestIndexer indexer) {
+                    indexer.add(createIndexRequest(element));
+                }
+            }
+        );
+        // 必须设置flush参数
+        //刷新前缓冲的最大动作量
+        esSinkBuilder.setBulkFlushMaxActions(1);
+        //刷新前缓冲区的最大数据大小（以MB为单位）
+        esSinkBuilder.setBulkFlushMaxSizeMb(500);
+        //论缓冲操作的数量或大小如何都要刷新的时间间隔
+        esSinkBuilder.setBulkFlushInterval(5000);
+        dataStream.addSink(esSinkBuilder.build());
+        //设置程序名称
+        env.execute("Window WordCount");*/
     }
 }
