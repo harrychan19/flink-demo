@@ -24,7 +24,8 @@ import java.util.Map;
  * @author hushihai
  * @version V1.0, 2019/3/9
  */
-public class OrderAdvanceStream {
+@SuppressWarnings("all")
+public class MysqlSourceStream {
 
     public static void main(String[] args) throws Exception {
         ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
